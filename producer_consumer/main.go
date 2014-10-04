@@ -16,12 +16,13 @@ func nextId() int32 {
 
 type MakerThread struct {
 	random *rand.Rand
-	buff   chan []string
+	buff   chan<- []string
 	name   string
 }
 
 func (thread MakerThread) Start() {
 	for {
+		// Do any tasks
 		time.Sleep(time.Duration(thread.random.Int31()))
 		cake := fmt.Sprintf("[ Cake No. %d by %s ]", nextId(), thread.name)
 		thread.buff <- []string{thread.name, cake}
@@ -31,14 +32,14 @@ func (thread MakerThread) Start() {
 
 type EaterThread struct {
 	random *rand.Rand
-	buff   chan []string
+	buff   <-chan []string
 	name   string
 }
 
 func (thread EaterThread) Start() {
-	for {
-		pair := <-thread.buff
+	for pair := range thread.buff {
 		fmt.Printf("%s takes %s\n", pair[0], pair[1])
+		// Do any tasks
 		time.Sleep(time.Duration(thread.random.Int31()))
 	}
 }
@@ -48,13 +49,13 @@ func main() {
 
 	buffer := make(chan []string, 3)
 
-	go MakerThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "MakerThread-1"}.Start()
-	go MakerThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "MakerThread-2"}.Start()
-	go MakerThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "MakerThread-3"}.Start()
+	for i := 0; i < 3; i++ {
+		go MakerThread{rand.New(rand.NewSource(time.Now().Unix())), buffer, fmt.Sprintf("MakerThread-%d", i)}.Start()
+	}
 
-	go EaterThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "EaterThread-1"}.Start()
-	go EaterThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "EaterThread-2"}.Start()
-	go EaterThread{random: rand.New(rand.NewSource(time.Now().Unix())), buff: buffer, name: "EaterThread-3"}.Start()
+	for i := 0; i < 3; i++ {
+		go EaterThread{rand.New(rand.NewSource(time.Now().Unix())), buffer, fmt.Sprintf("EaterThread-%d", i)}.Start()
+	}
 
 	select {}
 }
